@@ -1,3 +1,5 @@
+// src/content/fieldInjector.tsx
+
 import { createRoot, Root } from 'react-dom/client';
 import { SuggestionPopup, SuggestionPopupProps } from './SuggestionPopup';
 import { StorageService } from '../services/storage';
@@ -62,34 +64,21 @@ async function handleSelection() {
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
 
-    // Try the real vector-search integration
+    // --- This is the REAL integration ---
     const storedEntries = await StorageService.getEntries();
     const bestMatch = await findBestMatch(newQuestion, storedEntries);
-
-    // If no match, but the user selected "full ... name", suggest "First Name"
-    let suggestedQuestion: string | undefined = bestMatch?.question;
-    let suggestedAnswer: string | undefined = bestMatch?.answer;
-    if (!bestMatch) {
-      const words = newQuestion.split(' ');
-      if (words[0].toLowerCase() === 'full' && words.length >= 2) {
-        const lastWord = words[words.length - 1];
-        // e.g. 'full legal name' → 'First Name'
-        suggestedQuestion =
-          'First ' + lastWord.charAt(0).toUpperCase() + lastWord.slice(1);
-        // e.g. 'Jerry Hoskins' → 'Jerry'
-        suggestedAnswer = activeField.value.split(' ')[0];
-      }
-    }
+    // --- End integration ---
 
     renderSuggestionPopup({
       top: rect.bottom + window.scrollY,
       left: rect.left + window.scrollX,
       newQuestion,
-      suggestedQuestion,
-      suggestedAnswer,
+      // Pass the best match if found, otherwise pass undefined
+      suggestedQuestion: bestMatch?.question,
+      suggestedAnswer: bestMatch?.answer,
       activeField,
     });
-
+    
     exitHighlightingMode();
   }
 }

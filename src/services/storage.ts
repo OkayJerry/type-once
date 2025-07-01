@@ -27,27 +27,37 @@ export class StorageService {
    */
   public static async addEntry(question: string, answer: string): Promise<void> {
     const embeddingService = EmbeddingService.getInstance();
-    
-    // 1. Generate the embedding for the new question.
     const embedding = await embeddingService.embed(question);
-
-    // 2. Create the new entry object.
     const newEntry: StoredEntry = {
       question,
       answer,
-      // Convert Float32Array to a plain array for JSON serialization in storage.
       embedding: Array.from(embedding),
     };
 
-    // 3. Get the existing entries.
     const existingEntries = await this.getEntries();
-    
-    // 4. Add the new entry and save the updated list.
     const updatedEntries = [...existingEntries, newEntry];
 
     return new Promise((resolve) => {
       chrome.storage.local.set({ entries: updatedEntries }, () => {
         console.log('New entry saved to storage:', newEntry);
+        resolve();
+      });
+    });
+  }
+
+  /**
+   * Deletes a stored entry by its question text.
+   * @param questionToDelete The question of the entry to delete.
+   */
+  public static async deleteEntry(questionToDelete: string): Promise<void> {
+    const existingEntries = await this.getEntries();
+    const updatedEntries = existingEntries.filter(
+      (entry) => entry.question !== questionToDelete
+    );
+
+    return new Promise((resolve) => {
+      chrome.storage.local.set({ entries: updatedEntries }, () => {
+        console.log(`Entry deleted: "${questionToDelete}"`);
         resolve();
       });
     });

@@ -3,6 +3,16 @@
 import { fireEvent, screen } from '@testing-library/dom';
 import '@testing-library/jest-dom';
 import { injectIcons } from '../fieldInjector';
+import { StorageService } from '../../services/storage';
+import { findBestMatch } from '../../services/vectorSearch';
+
+// Mock the services that our fieldInjector depends on.
+jest.mock('../../services/storage');
+jest.mock('../../services/vectorSearch');
+
+// Create typed mocks for type-safe testing.
+const mockedGetEntries = jest.mocked(StorageService.getEntries);
+const mockedFindBestMatch = jest.mocked(findBestMatch);
 
 describe('Icon Injection and Popup Interaction', () => {
   const selectedText = 'full legal name';
@@ -11,7 +21,6 @@ describe('Icon Injection and Popup Interaction', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Minimal page with one input
     document.body.innerHTML = `
       <h1>Application Form</h1>
       <p>Please enter your ${selectedText} below.</p>
@@ -19,54 +28,53 @@ describe('Icon Injection and Popup Interaction', () => {
     `;
     document.body.className = '';
 
-    // Stub window.getSelection() to return our question
     jest.spyOn(window, 'getSelection').mockReturnValue({
       toString: () => selectedText,
       rangeCount: 1,
       getRangeAt: () => ({
         getBoundingClientRect: () => ({
-          top: 50,
-          left: 100,
-          bottom: 70,
-          right: 200,
-          x: 100,
-          y: 50,
-          width: 100,
-          height: 20,
+          top: 50, left: 100, bottom: 70, right: 200, x: 100, y: 50, width: 100, height: 20,
         }),
       }),
     } as any);
 
-    // Inject the icon so our click/mouseup handlers are wired
+    // --- Setup Service Mocks ---
+    // Simulate having some entries in storage.
+    mockedGetEntries.mockResolvedValue([
+      { question: 'First Name', answer: 'Jerry', embedding: [1, 0, 0] },
+    ]);
+    // Simulate the vector search finding a best match.
+    mockedFindBestMatch.mockResolvedValue({
+      question: 'First Name',
+      answer: 'Jerry',
+      embedding: [1, 0, 0],
+    });
+    // --- End Service Mocks ---
+
     injectIcons();
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
     document.body.innerHTML = '';
   });
 
   it('renders the SuggestionPopup with correct question and answer after selection', async () => {
-    // 1) Click the icon to enter highlighting mode
     const icon = document.querySelector<HTMLElement>('.type-once-icon');
     expect(icon).toBeTruthy();
     fireEvent.click(icon!);
 
-    // 2) Simulate the user releasing the mouse (triggers renderSelection)
     fireEvent.mouseUp(document.body);
 
-    // 3) Now the popup should render the suggested question & answer
+    // Now that our services are mocked, the popup should receive the correct props.
     const questionNode = await screen.findByText('First Name');
-    const answerNode   = await screen.findByText('Jerry');
+    const answerNode = await screen.findByText('Jerry');
 
     expect(questionNode).toBeInTheDocument();
     expect(answerNode).toBeInTheDocument();
   });
 
   it('does not render the SuggestionPopup if not in highlighting mode', () => {
-    // Mouse up without clicking the icon
     fireEvent.mouseUp(document.body);
-
     expect(document.querySelector('.type-once-popup')).toBeNull();
   });
 });

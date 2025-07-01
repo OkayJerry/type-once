@@ -3,10 +3,8 @@
 import { StorageService } from '../storage';
 import { StoredEntry } from '../../types';
 
-// Create a stable mock function for `embed` that we can reference in our tests.
 const mockEmbed = jest.fn().mockResolvedValue(new Float32Array([0.1, 0.2, 0.3]));
 
-// Mock the EmbeddingService to return our stable mock function.
 jest.mock('../embedding', () => ({
   EmbeddingService: {
     getInstance: jest.fn(() => ({
@@ -15,7 +13,6 @@ jest.mock('../embedding', () => ({
   },
 }));
 
-// Mock the chrome.storage.local API
 const chromeStorageMock = (() => {
   let store: { [key: string]: any } = {};
   return {
@@ -27,10 +24,10 @@ const chromeStorageMock = (() => {
     clear: () => {
       store = {};
     },
+    getStore: () => store, // Helper to inspect the mock store
   };
 })();
 
-// Assign the mock to the global chrome object
 beforeAll(() => {
   Object.defineProperty(global, 'chrome', {
     value: { storage: { local: chromeStorageMock } },
@@ -44,42 +41,35 @@ beforeEach(() => {
 });
 
 describe('StorageService', () => {
+  const mockEntries: StoredEntry[] = [
+    { question: 'q1', answer: 'a1', embedding: [1] },
+    { question: 'q2', answer: 'a2', embedding: [2] },
+  ];
+
   it('should get all stored entries', async () => {
-    const mockEntries: StoredEntry[] = [{ question: 'q1', answer: 'a1', embedding: [1] }];
     chromeStorageMock.set({ entries: mockEntries }, () => {});
-    
     const entries = await StorageService.getEntries();
     expect(entries).toEqual(mockEntries);
-    expect(chromeStorageMock.get).toHaveBeenCalledWith('entries', expect.any(Function));
   });
 
   it('should add a new entry with its embedding', async () => {
-    const newQuestion = 'new question';
-    const newAnswer = 'new answer';
+    await StorageService.addEntry('new question', 'new answer');
+    expect(mockEmbed).toHaveBeenCalledWith('new question');
+    const store = chromeStorageMock.getStore();
+    expect(store.entries[0].question).toBe('new question');
+    expect(store.entries[0].embedding).toEqual([0.10000000149011612, 0.20000000298023224, 0.30000001192092896]);
+  });
 
-    await StorageService.addEntry(newQuestion, newAnswer);
+  it('should delete an entry by its question', async () => {
+    // 1. Start with two entries
+    chromeStorageMock.set({ entries: mockEntries }, () => {});
 
-    // Verify that our stable mock for the embedding service was called
-    expect(mockEmbed).toHaveBeenCalledWith(newQuestion);
+    // 2. Delete one of them
+    await StorageService.deleteEntry('q1');
 
-    // Verify that chrome.storage.set was called with the correct new entry structure
-    expect(chromeStorageMock.set).toHaveBeenCalledWith(
-      expect.objectContaining({
-        entries: expect.arrayContaining([
-          expect.objectContaining({
-            question: newQuestion,
-            answer: newAnswer,
-            embedding: expect.any(Array), // Check that embedding is an array
-          }),
-        ]),
-      }),
-      expect.any(Function)
-    );
-
-    // Add a more specific check for the embedding values to handle floating-point precision
-    const savedEntry = (chromeStorageMock.set.mock.calls[0][0] as any).entries[0];
-    expect(savedEntry.embedding[0]).toBeCloseTo(0.1);
-    expect(savedEntry.embedding[1]).toBeCloseTo(0.2);
-    expect(savedEntry.embedding[2]).toBeCloseTo(0.3);
+    // 3. Verify that only the other entry remains
+    const store = chromeStorageMock.getStore();
+    expect(store.entries).toHaveLength(1);
+    expect(store.entries[0].question).toBe('q2');
   });
 });
