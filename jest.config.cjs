@@ -1,21 +1,17 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
-    preset: 'ts-jest',
-    testEnvironment: 'jsdom',                   // or 'jest-environment-jsdom'
-    moduleFileExtensions: ['ts','tsx','js','jsx','json','node'],
-    transform: {
-        '^.+\\.(ts|tsx)$': 'ts-jest',
-    },
-    testRegex: '\\.test\\.(ts|tsx)$',
-    setupFiles: [
-        'jest-webextension-mock'
-    ],
-    setupFilesAfterEnv: [
-        '<rootDir>/src/setupTests.ts'
-    ],
+    preset: 'ts-jest/presets/js-with-ts',
+    testEnvironment: 'jsdom',
+  
+    // Run after Jest installs its globals (expect, test, describe)
+    setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],  // ← important! :contentReference[oaicite:7]{index=7}
+  
     moduleNameMapper: {
       '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-      '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/__mocks__/fileMock.js'
-    }
-};
+      '^@xenova/transformers$':    '<rootDir>/__mocks__/transformersMock.js'
+    },
+  
+    // Allow ts-jest to compile .js files too
+    transformIgnorePatterns: []
+  };
   

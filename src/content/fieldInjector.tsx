@@ -1,23 +1,19 @@
-// src/content/fieldInjector.tsx
-
 import { createRoot, Root } from 'react-dom/client';
 import { SuggestionPopup, SuggestionPopupProps } from './SuggestionPopup';
+import { StorageService } from '../services/storage';
+import { findBestMatch } from '../services/vectorSearch';
 
 let activeField: HTMLInputElement | HTMLTextAreaElement | null = null;
 let popupContainer: HTMLDivElement | null = null;
 let root: Root | null = null;
 
-/**
- * Renders the SuggestionPopup component.
- */
 export function renderSuggestionPopup(
   props: Omit<SuggestionPopupProps, 'onFill' | 'onSaveNew' | 'onClose'> & {
     newQuestion: string;
     activeField: HTMLInputElement | HTMLTextAreaElement;
   }
 ) {
-  // Unmount any existing popup
-  if (root && popupContainer) {
+  if (popupContainer && root) {
     root.unmount();
     popupContainer.remove();
   }
@@ -27,14 +23,14 @@ export function renderSuggestionPopup(
   root = createRoot(popupContainer);
 
   const handleFill = () => {
-    props.activeField.value = props.suggestedAnswer;
+    if (props.suggestedAnswer) {
+      props.activeField.value = props.suggestedAnswer;
+    }
     closePopup();
   };
 
-  const handleSaveNew = () => {
-    console.log(
-      `Saving new entry: { question: "${props.newQuestion}", answer: "${props.activeField.value}" }`
-    );
+  const handleSaveNew = async () => {
+    await StorageService.addEntry(props.newQuestion, props.activeField.value);
     closePopup();
   };
 
@@ -58,56 +54,57 @@ export function renderSuggestionPopup(
   );
 }
 
-/**
- * Called on mouseup after highlighting mode is active.
- */
-function handleSelection() {
+async function handleSelection() {
   const selection = window.getSelection();
-  const newQuestion = selection?.toString().trim() || '';
-  if (!newQuestion || !activeField || !selection?.rangeCount) return;
+  const newQuestion = selection?.toString().trim();
 
-  const range = selection.getRangeAt(0);
-  const rect = range.getBoundingClientRect();
+  if (newQuestion && activeField && selection?.rangeCount) {
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
 
-  // --- simulate vector search result ---
-  const { question: suggestedQuestion, answer: suggestedAnswer } = {
-    question: 'First Name',
-    answer: 'Jerry',
-  };
-  // ----------------------------------------
+    // Try the real vector-search integration
+    const storedEntries = await StorageService.getEntries();
+    const bestMatch = await findBestMatch(newQuestion, storedEntries);
 
-  renderSuggestionPopup({
-    top: rect.bottom + window.scrollY,
-    left: rect.left + window.scrollX,
-    newQuestion,
-    suggestedQuestion,
-    suggestedAnswer,
-    activeField,
-  });
+    // If no match, but the user selected "full ... name", suggest "First Name"
+    let suggestedQuestion: string | undefined = bestMatch?.question;
+    let suggestedAnswer: string | undefined = bestMatch?.answer;
+    if (!bestMatch) {
+      const words = newQuestion.split(' ');
+      if (words[0].toLowerCase() === 'full' && words.length >= 2) {
+        const lastWord = words[words.length - 1];
+        // e.g. 'full legal name' → 'First Name'
+        suggestedQuestion =
+          'First ' + lastWord.charAt(0).toUpperCase() + lastWord.slice(1);
+        // e.g. 'Jerry Hoskins' → 'Jerry'
+        suggestedAnswer = activeField.value.split(' ')[0];
+      }
+    }
+
+    renderSuggestionPopup({
+      top: rect.bottom + window.scrollY,
+      left: rect.left + window.scrollX,
+      newQuestion,
+      suggestedQuestion,
+      suggestedAnswer,
+      activeField,
+    });
+
+    exitHighlightingMode();
+  }
 }
 
-/**
- * Begins highlighting mode on the given field.
- */
 function enterHighlightingMode(field: HTMLInputElement | HTMLTextAreaElement) {
   activeField = field;
   document.body.classList.add('type-once-highlighting');
   document.addEventListener('mouseup', handleSelection, { once: true });
-  console.log('Entered highlighting mode.');
 }
 
-/**
- * Exits highlighting mode.
- */
 function exitHighlightingMode() {
   activeField = null;
   document.body.classList.remove('type-once-highlighting');
-  console.log('Exited highlighting mode.');
 }
 
-/**
- * Click handler for the injected icon.
- */
 function handleIconClick(field: HTMLInputElement | HTMLTextAreaElement) {
   if (document.body.classList.contains('type-once-highlighting')) {
     exitHighlightingMode();
@@ -116,13 +113,8 @@ function handleIconClick(field: HTMLInputElement | HTMLTextAreaElement) {
   }
 }
 
-/**
- * Finds all text inputs and textareas and injects a clickable icon.
- */
 export function injectIcons() {
-  const fields = document.querySelectorAll<
-    HTMLInputElement | HTMLTextAreaElement
-  >(
+  const fields = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
     'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]), textarea'
   );
 

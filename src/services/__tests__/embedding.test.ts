@@ -7,7 +7,7 @@ jest.mock('@xenova/transformers', () => ({
   pipeline: jest.fn().mockResolvedValue(
     // This mock function simulates the feature extractor itself.
     // It will be the resolved value of the pipeline() promise.
-    jest.fn().mockImplementation((text: string) => {
+    jest.fn().mockImplementation((_text: string) => {
       // The real extractor returns a promise, so our mock should too.
       return Promise.resolve({
         data: new Float32Array(Array.from({ length: 384 }, (_, i) => i / 1000)),

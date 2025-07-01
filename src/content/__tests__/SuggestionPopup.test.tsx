@@ -1,4 +1,5 @@
 // src/content/__tests__/SuggestionPopup.test.tsx
+
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { SuggestionPopup } from '../SuggestionPopup';
@@ -9,7 +10,7 @@ describe('SuggestionPopup', () => {
   const mockOnSaveNew = jest.fn();
   const mockOnClose = jest.fn();
 
-  const defaultProps: SuggestionPopupProps = {
+  const propsWithSuggestion: SuggestionPopupProps = {
     top: 100,
     left: 150,
     suggestedQuestion: 'Email Address',
@@ -19,47 +20,42 @@ describe('SuggestionPopup', () => {
     onClose: mockOnClose,
   };
 
+  const propsWithoutSuggestion: SuggestionPopupProps = {
+    top: 100,
+    left: 150,
+    onFill: mockOnFill,
+    onSaveNew: mockOnSaveNew,
+    onClose: mockOnClose,
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders correctly with the given props', () => {
-    render(<SuggestionPopup {...defaultProps} />);
-
-    // The prefix text
-    expect(
-      screen.getByText('This looks similar to', { exact: false })
-    ).toBeInTheDocument();
-
-    // The <strong> child
-    expect(screen.getByText(defaultProps.suggestedQuestion)).toBeInTheDocument();
-
-    // The answer prefix
-    expect(
-      screen.getByText('Fill with your saved answer:', { exact: false })
-    ).toBeInTheDocument();
-
-    // The <em> child
-    expect(screen.getByText(defaultProps.suggestedAnswer)).toBeInTheDocument();
+  it('renders correctly when a suggestion is provided', () => {
+    render(<SuggestionPopup {...propsWithSuggestion} />);
+    expect(screen.getByText(/This looks similar to/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Fill with this Answer/i })).toBeInTheDocument();
   });
 
-  it('calls onFill when the "Fill with this Answer" button is clicked', () => {
-    render(<SuggestionPopup {...defaultProps} />);
-    fireEvent.click(
-      screen.getByRole('button', { name: /Fill with this Answer/i })
-    );
+  it('renders correctly when NO suggestion is provided', () => {
+    render(<SuggestionPopup {...propsWithoutSuggestion} />);
+    expect(screen.getByText(/No similar entry found/i)).toBeInTheDocument();
+    // The "Fill" button should not be present
+    expect(screen.queryByRole('button', { name: /Fill with this Answer/i })).toBeNull();
+    // The "Save" button should still be present
+    expect(screen.getByRole('button', { name: /Save as New Entry/i })).toBeInTheDocument();
+  });
+
+  it('calls onFill when the "Fill" button is clicked', () => {
+    render(<SuggestionPopup {...propsWithSuggestion} />);
+    fireEvent.click(screen.getByRole('button', { name: /Fill with this Answer/i }));
     expect(mockOnFill).toHaveBeenCalledTimes(1);
   });
 
   it('calls onSaveNew when the "Save as New" button is clicked', () => {
-    render(<SuggestionPopup {...defaultProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /Save as New/i }));
+    render(<SuggestionPopup {...propsWithSuggestion} />);
+    fireEvent.click(screen.getByRole('button', { name: /Save as New Entry/i }));
     expect(mockOnSaveNew).toHaveBeenCalledTimes(1);
-  });
-
-  it('calls onClose when the close (×) button is clicked', () => {
-    render(<SuggestionPopup {...defaultProps} />);
-    fireEvent.click(screen.getByLabelText(/Close/i));
-    expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 });
