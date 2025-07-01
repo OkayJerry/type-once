@@ -9,7 +9,7 @@ let activeField: HTMLInputElement | HTMLTextAreaElement | null = null;
 let popupContainer: HTMLDivElement | null = null;
 let root: Root | null = null;
 
-export function renderSuggestionPopup(
+function renderSuggestionPopup(
   props: Omit<SuggestionPopupProps, 'onFill' | 'onSaveNew' | 'onClose'> & {
     newQuestion: string;
     activeField: HTMLInputElement | HTMLTextAreaElement;

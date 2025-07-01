@@ -50,23 +50,3 @@ export function handleFormSubmit(form: HTMLFormElement) {
       });
     });
   }
-  
-  /**
-   * Handles click events to detect form submissions on modern web apps.
-   */
-  export function handleClick(event: MouseEvent) {
-    const target = event.target as HTMLElement;
-  
-    const isSubmitButton =
-      (target.tagName === 'BUTTON' && (target as HTMLButtonElement).type === 'submit') ||
-      (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'submit') ||
-      target.getAttribute('role') === 'button';
-  
-    if (isSubmitButton) {
-      const form = target.closest('form');
-      if (form) {
-        setTimeout(() => handleFormSubmit(form), 100);
-      }
-    }
-  }
-  
