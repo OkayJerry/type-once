@@ -3,5 +3,5 @@ import App from '../App';
 
 test('renders hello world heading', () => {
     render(<App />);
-    expect(screen.getByText(/hello world!/i)).toBeInTheDocument();
+    expect(screen.getByText(/TypeOnce/i)).toBeInTheDocument();
 });

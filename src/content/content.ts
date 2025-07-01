@@ -1,11 +1,8 @@
 // src/content/content.ts
-import { handleFormSubmit } from './submitListener';
+import { injectIcons } from './fieldInjector';
 
-// Listen in the capture phase to catch submits before page navigation :contentReference[oaicite:2]{index=2}
-document.addEventListener('submit', (event) => {
-  const form = event.target;
-  if (form instanceof HTMLFormElement) {
-    // Delegate to your tested handler :contentReference[oaicite:3]{index=3}
-    handleFormSubmit(form);
-  }
-}, true);
+// When the page is idle, inject our icons into the form fields.
+// We no longer listen for submit events.
+window.addEventListener('load', () => {
+  injectIcons();
+});

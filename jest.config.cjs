@@ -4,8 +4,9 @@ module.exports = {
     testEnvironment: 'jsdom',                   // or 'jest-environment-jsdom'
     moduleFileExtensions: ['ts','tsx','js','jsx','json','node'],
     transform: {
-      '^.+\\.(ts|tsx)$': 'ts-jest'
+        '^.+\\.(ts|tsx)$': 'ts-jest',
     },
+    testRegex: '\\.test\\.(ts|tsx)$',
     setupFiles: [
         'jest-webextension-mock'
     ],
@@ -15,7 +16,6 @@ module.exports = {
     moduleNameMapper: {
       '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
       '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/__mocks__/fileMock.js'
-    },
-    testMatch: ['**/__tests__/**/*.+(ts|tsx|js)', '**/?(*.)+(spec|test).+(ts|tsx|js)']
-  };
+    }
+};
   
